@@ -1,0 +1,88 @@
+name: Ara 3D Gen — Generate Character
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: 'Preset oficial do Ara (ex.: The Soldier). Para geração aleatória, deixe vazio.'
+        required: false
+        type: string
+        default: 'The Soldier'
+      detail:
+        description: 'Nível de detalhe'
+        required: true
+        type: choice
+        options:
+          - low
+          - medium
+          - high
+        default: high
+      formats:
+        description: 'Formatos de exportação separados por vírgula'
+        required: true
+        type: choice
+        options:
+          - glb
+          - glb,fbx
+          - glb,fbx,obj
+        default: glb
+      random_seed:
+        description: 'Seed numérica; use -1 para usar o preset'
+        required: true
+        type: string
+        default: '-1'
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout workflow repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone Ara 3D Gen (source kept outside the project repository)
+        run: |
+          git clone --depth 1 https://github.com/olatunde85/3d-gen.git ara-3d-gen
+
+      - name: Install dependencies
+        working-directory: ara-3d-gen
+        run: npm install
+
+      - name: Download and prepare character assets
+        working-directory: ara-3d-gen
+        run: npm run setup-assets
+
+      - name: Generate character
+        working-directory: ara-3d-gen
+        env:
+          PRESET: ${{ inputs.preset }}
+          DETAIL: ${{ inputs.detail }}
+          FORMATS: ${{ inputs.formats }}
+          RANDOM_SEED: ${{ inputs.random_seed }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          if [[ "$RANDOM_SEED" != "-1" ]]; then
+            npm run export -- --random "$RANDOM_SEED" --detail "$DETAIL" --formats "$FORMATS" --out out
+          else
+            npm run export -- --preset "$PRESET" --detail "$DETAIL" --formats "$FORMATS" --out out
+          fi
+          test -n "$(find out -type f -print -quit)"
+
+      - name: Upload generated character (not committed to repository)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ara-character-${{ github.run_number }}
+          path: ara-3d-gen/out/**
+          if-no-files-found: error
+          retention-days: 7
