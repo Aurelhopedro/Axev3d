@@ -1,0 +1,80 @@
+name: AXEV CRIME — Gerar protagonista 3D
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: "Preset inicial do Ara 3D Gen"
+        required: true
+        type: choice
+        options:
+          - The Soldier
+          - Adventurer
+          - Gangster
+        default: The Soldier
+      detail:
+        description: "Nível de detalhe do modelo"
+        required: true
+        type: choice
+        options:
+          - medium
+          - high
+        default: high
+
+permissions:
+  contents: read
+
+concurrency:
+  group: axev-character-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  generate-character:
+    name: Gerar e disponibilizar ficheiros 3D
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Obter o repositório AXEV CRIME
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Obter Ara 3D Gen
+        run: git clone --depth 1 https://github.com/olatunde85/3d-gen.git ara-3d-gen
+
+      - name: Instalar dependências
+        working-directory: ara-3d-gen
+        run: npm install
+
+      - name: Preparar os recursos 3D
+        working-directory: ara-3d-gen
+        run: npm run setup-assets
+
+      - name: Gerar personagem base
+        working-directory: ara-3d-gen
+        env:
+          CHARACTER_PRESET: ${{ inputs.preset }}
+          CHARACTER_DETAIL: ${{ inputs.detail }}
+        run: |
+          mkdir -p out
+          npm run export -- --preset "$CHARACTER_PRESET" --detail "$CHARACTER_DETAIL" --out out
+
+      - name: Verificar ficheiros gerados
+        run: |
+          if [ ! -d "ara-3d-gen/out" ] || [ -z "$(find ara-3d-gen/out -type f -print -quit)" ]; then
+            echo "ERRO: não foram encontrados ficheiros exportados."
+            exit 1
+          fi
+          echo "Ficheiros gerados:"
+          find ara-3d-gen/out -type f -printf '%p (%s bytes)\n'
+
+      - name: Disponibilizar personagem para descarregar
+        uses: actions/upload-artifact@v4
+        with:
+          name: axev-crime-protagonista-${{ github.run_number }}
+          path: ara-3d-gen/out/**
+          if-no-files-found: error
+          retention-days: 7
