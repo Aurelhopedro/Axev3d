@@ -1,0 +1,603 @@
+name: Ara 3D — Generate Character Docs
+
+on:
+  workflow_dispatch:
+    inputs:
+      preset:
+        description: 'Preset do personagem (ex.: The Soldier). Deixe vazio para usar o padrão.'
+        required: false
+        type: string
+        default: 'The Soldier'
+      output_branch:
+        description: 'Branch onde os docs serão guardados'
+        required: false
+        type: string
+        default: 'docs/character'
+
+permissions:
+  contents: write
+
+jobs:
+  generate-docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Clone Ara 3D Gen
+        run: |
+          git clone --depth 1 https://github.com/olatunde85/3d-gen.git ara-3d-gen
+
+      - name: Create docs output directory
+        run: mkdir -p docs-out
+
+      - name: Generate ANIMATIONS.md
+        run: |
+          cat > docs-out/ANIMATIONS.md << 'MDEOF'
+# Ara 3D Gen — Catálogo de Animações
+
+> Personagem gerado com o preset **${{ inputs.preset }}**  
+> Ferramenta: [Ara 3D Gen](https://github.com/olatunde85/3d-gen) | Exportado via workflow GitHub Actions
+
+---
+
+## Visão Geral
+
+O personagem Ara 3D Gen vem com **48 animações** distribuídas em 8 categorias.  
+Todas as animações são avaliadas pelo mesmo motor (`src/core/anim/evaluate.ts`),
+garantindo que o que se vê no preview é exatamente o que se exporta.
+
+- **Formato GLB:** uma animação `glTF animation` por clip (30 fps, canais de rotação + translação root)
+- **Formato FBX:** um `AnimationStack` (take) por clip
+- **Root motion:** disponível para Walk, Run e Strafe — faz o personagem deslocar-se em vez de animar no lugar
+
+---
+
+## Tabela Completa de Animações
+
+### 1. Idle & Stance
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Idle` | Loop | Idle relaxado com braços soltos — pose padrão ao carregar o personagem |
+| `Crouch idle` | Loop | Idle em posição de agachamento |
+
+---
+
+### 2. Locomotion
+
+> Todos os clips de locomoção são loops. Podem ser exportados **in place** ou com **root motion** (o personagem desloca-se fisicamente).
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Walk` | Loop | Caminhada upright, capturada com motion capture (CMU 07_01) |
+| `Slouch walk` | Loop | Caminhada com tronco inclinado ~13° (CMU 02_01, versão alternativa) |
+| `Run` | Loop | Corrida com motion capture |
+| `Walk backwards` | Loop | Recuo a pé |
+| `Strafe left` | Loop | Deslocamento lateral para a esquerda |
+| `Strafe right` | Loop | Deslocamento lateral para a direita |
+
+---
+
+### 3. Actions (One-shots)
+
+| Nome do Clip | Tipo | Duração aprox. | Descrição |
+|---|---|---|---|
+| `Jump` | One-shot | — | Salto simples (versão unitária, para casos básicos) |
+| `Jump start` | One-shot | 0.45 s | Fase de impulsão: agacha, balanço de braços, decolagem. Termina na pose aérea |
+| `Jump (in air)` | Loop | 0.8 s | Pose aérea com leve drift de equilíbrio. Loop enquanto estiver no ar |
+| `Jump land` | One-shot | — | Aterragem. Continua a partir da pose aérea de `Jump (in air)` |
+| `Running jump` | One-shot | — | Salto a partir de corrida |
+| `Fall` | One-shot | — | Queda livre |
+| `Punch` | One-shot | — | Soco |
+| `Hit reaction` | One-shot | — | Reação a golpe (frente) |
+| `Hit reaction back` | One-shot | — | Reação a golpe (costas) |
+| `Hit reaction left` | One-shot | — | Reação a golpe (esquerda) |
+| `Hit reaction right` | One-shot | — | Reação a golpe (direita) |
+| `Knockdown` | One-shot | — | Tombamento |
+| `Death (fall backward)` | One-shot | — | Morte — cai para trás |
+| `Get up (face down)` | One-shot | — | Levanta-se de bruços |
+| `Get up (face up)` | One-shot | — | Levanta-se de costas |
+| `Sword slash` | One-shot | — | Ataque de espada |
+| `Sword block` | One-shot | — | Bloqueio com espada |
+
+---
+
+### 4. Emotes
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Wave` | Loop | Acenar com a mão |
+| `Cheer` | Loop | Celebração / vitória |
+
+---
+
+### 5. Turns (One-shots)
+
+> Yaw da anca com passos nos pés. Usados para rotações controladas pelo motor do jogo.
+
+| Nome do Clip | Tipo | Ângulo |
+|---|---|---|
+| `Turn left 45°` | One-shot | -45° |
+| `Turn right 45°` | One-shot | +45° |
+| `Turn left 90°` | One-shot | -90° |
+| `Turn right 90°` | One-shot | +90° |
+| `Turn 360°` | One-shot | 360° |
+
+---
+
+### 6. Shooter (Conjunto completo)
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Pistol idle` | Loop | Pistola em baixa prontidão (low ready) |
+| `Pistol aim` | One-shot | Levantar pistola para mirar |
+| `Pistol fire` | One-shot | Disparar pistola |
+| `Rifle idle` | Loop | Rifle em baixa prontidão |
+| `Rifle aim idle` | Loop | Rifle em posição de mira |
+| `Rifle fire single` | One-shot | Disparar rifle (tiro único) |
+| `Rifle fire full-auto` | Loop | Disparar rifle (automático) |
+| `Rifle reload` | One-shot | Recarregar rifle |
+| `Aiming walk` | Loop | Andar em mira |
+| `Aiming walk back` | Loop | Recuar em mira |
+| `Aiming strafe left` | Loop | Lateral esquerda em mira |
+| `Aiming strafe right` | Loop | Lateral direita em mira |
+| `Rifle run` | Loop | Correr com rifle |
+| `Sprint` | Loop | Sprint (rifle) |
+| `Crouch aim` | Loop | Agachar em mira |
+| `Crouch walk` | Loop | Andar agachado |
+| `Throw grenade` | One-shot | Lançar granada |
+| `Death (shooter)` | One-shot | Morte — cair em frente (shooter) |
+
+---
+
+### 7. Melee
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Sword idle (guard)` | Loop | Guarda com espada |
+| `Sword slash` | One-shot | Corte (ver também Actions) |
+| `Sword block` | One-shot | Bloqueio |
+
+---
+
+### 8. Sitting & Lying
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Sit` | Loop | Sentar numa cadeira (encadeado com `Idle`) |
+| `Lie down` | One-shot | Deitar-se |
+| `Sleep` | Loop | Deitado / a dormir |
+| `Get up (from sleep)` | One-shot | Levantar-se do chão |
+
+---
+
+### 9. Interactions
+
+| Nome do Clip | Tipo | Descrição |
+|---|---|---|
+| `Ground pickup` | One-shot | Recolher objeto do chão. Termina em `Carry idle` |
+| `Use / press` | One-shot | Usar / pressionar (botão, painel) |
+| `Open door` | One-shot | Abrir porta (pull + torção do pulso) |
+| `Push` | One-shot | Empurrar |
+| `Carry idle` | Loop | Idle com objeto agarrado com as duas mãos |
+| `Carry walk` | Loop | Andar com objeto — cadência mais lenta, IK de duas mãos |
+| `Put down / drop (ground)` | One-shot | Pousar / largar objeto no chão (inverso de pickup) |
+
+---
+
+### 10. Vehicles
+
+> Animam apenas o rider. O veículo é fornecido pelo jogo e o personagem é parentado ao assento.  
+> As mãos são posicionadas por IK nos controlos (volante às 9h e 3h, guiador, rédeas, remo, etc.).
+
+| Nome do Clip | Tipo | Altura das ancas | Descrição |
+|---|---|---|---|
+| `Drive car` | Loop | Altura do assento | Conduzir carro (mãos no volante) |
+| `Sit (passenger)` | Loop | Altura do assento | Passageiro |
+| `Ride bicycle` | Loop | ~0.93 m | Pedalar bicicleta |
+| `Ride motorcycle` | Loop | ~0.78 m | Conduzir mota |
+| `Ride horse (trot)` | Loop | ~1.40 m | Trote a cavalo |
+| `Paddle canoe` | Loop | Altura do assento | Remar canoa |
+| `Paddle kayak` | Loop | Altura do assento | Remar kayak |
+| `Row boat` | Loop | Altura do assento | Remar barco (remos) |
+| `Drive boat (helm)` | Loop | Altura do assento | Conduzir barco (leme) |
+
+---
+
+## Como Implementar no Godot 4
+
+### 1. Exportar com nomes de loop corretos
+
+No painel de exportação do Ara 3D Gen, ativa a opção:  
+> ✅ **Mark looping clips in their names**
+
+Os clips ficam nomeados `Walk-loop`, `Idle-loop`, etc. O Godot importa-os automaticamente como loops.
+
+### 2. Importar o GLB
+
+1. Arrasta o `.glb` para a pasta `res://characters/` no Godot
+2. Clica no ficheiro → aba **Import** → confirma **Skeleton → Humanoid** (se aplicável)
+3. O Godot cria automaticamente um `AnimationLibrary` com todos os clips
+
+### 3. Usar AnimationPlayer
+
+```gdscript
+@onready var anim_player = $CharacterBody3D/AnimationPlayer
+
+func _ready():
+    anim_player.play("Idle-loop")
+
+func walk():
+    anim_player.play("Walk-loop")
+
+func jump():
+    anim_player.play("Jump start")
+    await anim_player.animation_finished
+    anim_player.play("Jump (in air)-loop")
+```
+
+### 4. Usar AnimationTree (recomendado para jogos)
+
+```gdscript
+@onready var anim_tree = $CharacterBody3D/AnimationTree
+
+func _ready():
+    anim_tree.active = true
+
+func set_speed(speed: float):
+    anim_tree["parameters/blend_position"] = speed
+```
+
+### 5. Root Motion
+
+Se exportaste com **Root Motion** ativo:
+
+```gdscript
+func _physics_process(delta):
+    var root_motion = anim_tree.get_root_motion_position()
+    velocity = root_motion / delta
+    move_and_slide()
+```
+
+### 6. Clips one-shot vs loop
+
+| Tipo | Godot | Como usar |
+|---|---|---|
+| Loop | Importado automático como loop | `anim_player.play("Walk-loop")` |
+| One-shot | Termina e para | `await anim_player.animation_finished` para encadear |
+
+---
+
+## Notas Técnicas
+
+- **FPS:** todos os clips a 30 fps
+- **Up axis:** +Y up, personagem orientado para +Z, pés em y = 0
+- **Esqueleto Game Rig:** 65 ossos, nomes Mixamo — compatível com Unity Humanoid, Unreal Mannequin e Mixamo
+- **Esqueleto Lite:** 25 ossos (sem dedos)
+- **Esqueleto Full MakeHuman:** 163 ossos (inclui rosto)
+- **Crossfade no viewer:** 0.25 s ao trocar clips
+- **Grounding automático:** agachamentos, aterragens e passos são corrigidos automaticamente
+- **IK de braço (dois ossos):** mãos posicionadas em armas e veículos para todos os body shapes
+
+MDEOF
+
+      - name: Generate CUSTOMIZATION.md
+        run: |
+          cat > docs-out/CUSTOMIZATION.md << 'MDEOF'
+# Ara 3D Gen — Guia de Personalização do Personagem
+
+> Ferramenta: [Ara 3D Gen](https://github.com/olatunde85/3d-gen)  
+> Este guia explica como alterar o personagem gerado: roupa, rosto, género, corpo, e muito mais.
+
+---
+
+## Como Funciona a Personalização
+
+O Ara 3D Gen usa **935 morph targets** (baseados no dataset CC0 do MakeHuman).  
+Cada personagem é definido por um ficheiro `params.json` gerado na exportação.  
+Para regenerar ou alterar um personagem, edita o `params.json` e reexporta.
+
+```
+npm run export -- --params meu-personagem.params.json --out out/
+```
+
+---
+
+## 1. Mudar o Género
+
+No app web: painel lateral → slider **Gender**  
+- `0.0` = feminino  
+- `1.0` = masculino  
+- Valores intermédios = géneros mistos (androginia)
+
+No `params.json`:
+```json
+{
+  "gender": 0.8
+}
+```
+
+> **Nota:** personagens com idade < 18 têm restrições automáticas de roupa (tops obrigatórios para feminino, roupa interior sempre presente).
+
+---
+
+## 2. Mudar o Rosto
+
+### Forma do rosto (sliders de detalhe)
+Disponíveis no painel **Face** do app:
+
+| Slider | Efeito |
+|---|---|
+| Head shape | Forma geral da cabeça |
+| Nose | Largura, comprimento, ponte |
+| Mouth | Largura, lábios |
+| Eyes | Tamanho, afastamento, inclinação |
+| Ears | Tamanho, posição |
+| Chin | Projeção, largura |
+| Cheeks | Volume, projeção |
+
+### Expressões
+Disponíveis na secção **Expression** (requer v0.2.0+):
+
+| Expressão | Chave `params.json` |
+|---|---|
+| Neutral | `"expression": "neutral"` |
+| Happy | `"expression": "happy"` |
+| Laughing | `"expression": "laughing"` |
+| Angry | `"expression": "angry"` |
+| Sad | `"expression": "sad"` |
+| Crying | `"expression": "crying"` |
+| Surprised | `"expression": "surprised"` |
+| Afraid | `"expression": "afraid"` |
+| Determined | `"expression": "determined"` |
+
+A expressão escolhida fica como **rosto base** no export (baked).  
+No GLB: blend shapes (morph targets) para animação dinâmica.  
+No FBX: BlendShape deformer, um canal por shape.
+
+### Olhos
+- **Cor dos olhos:** 9 opções disponíveis no painel de looks
+- **Piscadelas e olhares:** automáticos em todas as animações (com facial bones ativo)
+
+---
+
+## 3. Mudar de Roupa
+
+### Outfit completo (MakeHuman)
+Painel **Clothing** → **Outfit** → seleciona um preset de outfit completo.
+
+### Peças separadas
+
+**Tops:**
+- Tank top
+- Fatigue shirt
+- Uniform shirt (manga curta/comprida, com ou sem dragonas)
+- Techwear jacket
+- Tattered shirt
+- Sleeveless tunic
+- Woven tunic (buba)
+- Nenhum (shirtless/topless — apenas adultos 18+)
+
+**Bottoms:**
+- Briefs
+- Cargo shorts
+- Fatigue / Uniform / Techwear / Tattered pants
+- Loose trousers (sokoto)
+- Wrappers (comprimento ao joelho ou tornozelo)
+- Zulu hide aprons
+- Loincloth (painel frontal + traseiro)
+- Nenhum (apenas adultos 18+)
+
+**Calçado:**
+- MakeHuman shoes
+- Sandals
+- Combat boots
+- Descalço
+
+### Como recolorir roupa
+
+Cada peça tem:
+- **Colour** — cor principal
+- **Accent** — cor de detalhe (dragonas, crachá, fita refletora, etc.)
+- **Pattern** — padrão do tecido (onde disponível)
+
+Tecidos procedurais disponíveis: `kente`, `aso-oke`, `ankara`, `adire`, `shuka plaid`, `cowhide`, `leopard`, `camo`, `MOLLE`, `leather`, `techwear`, `tattered`
+
+---
+
+## 4. Mudar o Cabelo
+
+**Estilos disponíveis:**
+- Estilos MakeHuman (vários)
+- Buzz cut
+- Punk mohawk (liberty spikes, lados rapados)
+- Cornrows
+- Box braids
+
+**Cor do cabelo:** slider dedicado `Hair colour`
+
+**Barba / pelo facial:**
+- Stubble
+- Mustache
+- Goatee
+- Short beard
+- Full beard
+
+**Cor da barba:** slider `Beard colour`
+
+---
+
+## 5. Mudar o Corpo
+
+Sliders principais no painel **Body**:
+
+| Slider | Efeito |
+|---|---|
+| Gender | 0 = feminino → 1 = masculino |
+| Age | Jovem → Idoso |
+| Muscle | Definição muscular |
+| Weight | Peso / massa corporal |
+| Height | Altura |
+| Proportions | Proporções gerais |
+| Ethnicity | Mistura de targets étnicos |
+| Breast (feminino) | Volume |
+
+**219 sliders de detalhe** adicionais: cabeça, nariz, boca, olhos, orelhas, queixo, bochechas, tronco, membros.
+
+---
+
+## 6. Mudar a Pele
+
+**20 skins fotorrealistas** (combinações de):
+- Faixa etária: jovem / meia-idade / idoso
+- Etnicidade: Africano / Asiático / Caucasiano
+- Sexo: masculino / feminino
+
+A skin é escolhida automaticamente com base nos sliders, mas pode ser forçada no `params.json`.
+
+---
+
+## 7. Usar Presets
+
+19 presets oficiais disponíveis:
+
+| Preset | Descrição |
+|---|---|
+| The Soldier | Soldado com uniforme de combate |
+| African warrior | Guerreiro africano genérico |
+| Yoruba warrior | Guerreiro Iorubá |
+| Maasai warrior | Guerreiro Maasai |
+| Zulu warrior | Guerreiro Zulu |
+| Dahomey warrior | Guerreiro das Amazonas do Daomé |
+| Cyberpunk hacker | Hacker cyberpunk |
+| Nigerian Police | Polícia nigeriana (uniforme preto, boné, cinto) |
+| FRSC officer | Oficial FRSC (camisa bege, calças pretas, boné marsala) |
+| Wasteland survivor | Sobrevivente pós-apocalíptico |
+| Adventurer | Aventureiro |
+| + outros | Detective, Secret Agent, Athlete, etc. |
+
+**Via linha de comandos:**
+```bash
+npm run export -- --preset "The Soldier" --detail high --formats glb,fbx --out out/
+```
+
+**Via `params.json`:**
+```json
+{
+  "preset": "The Soldier",
+  "detail": "high"
+}
+```
+
+---
+
+## 8. Usar Seeds Aleatórias
+
+Cada seed gera sempre o mesmo personagem (reproduzível):
+
+```bash
+npm run export -- --random 42 --formats glb --out out/
+```
+
+```json
+{
+  "seed": 42
+}
+```
+
+---
+
+## 9. Mudar Armas / Props
+
+**Armas disponíveis:**
+- Assault rifle
+- Pistol
+- Sword
+- Combat knife
+
+**Opções de exportação da arma:**
+- **In the hand** — arma skinned ao socket `WeaponR`
+- **Separate prop file** — personagem sem arma + ficheiro separado `<nome>_<arma>.glb/.fbx`
+
+O prop tem origem no grip, por isso encaixa em `WeaponR` com offset zero.
+
+**Props:**
+- Bicycle (preview — roda e pedais sincronizados com `Ride bicycle`)
+- Cardboard parcel (caixote configurável com cores, fita e etiqueta)
+
+---
+
+## 10. Níveis de Detalhe
+
+| Nível | Geometria | Triângulos aprox. |
+|---|---|---|
+| Low | MakeHuman game proxy (~1.6k quads) | 5–10k |
+| Medium | Base mesh completa | 30–40k |
+| High (HD) | Subdivisão Catmull-Clark + roupa | 100–120k |
+
+```bash
+npm run export -- --preset "The Soldier" --detail low --out out/
+```
+
+---
+
+## 11. Workflow de Alteração Rápida
+
+1. **Exporta** o personagem base → guarda o `params.json` (incluído no ZIP)
+2. **Edita** o `params.json` com as alterações desejadas
+3. **Reexporta:**
+   ```bash
+   npm run export -- --params personagem.params.json --out out/
+   ```
+4. O ficheiro gerado tem exatamente as mesmas animações e rig
+
+---
+
+## 12. Notas para Godot
+
+- Usa **GLB** para Godot 4 (carrega diretamente sem plugins)
+- Ativa **Mark looping clips in their names** no painel de exportação
+- O esqueleto **Game Rig** (65 ossos, nomes Mixamo) é o mais compatível
+- O socket `WeaponR` permite trocar armas no engine sem re-exportar
+- Blend shapes das expressões são exportados no GLB — usáveis com `MorphTarget` no Godot
+
+MDEOF
+
+      - name: Commit and push docs to output branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          BRANCH="${{ inputs.output_branch }}"
+
+          git fetch origin "$BRANCH" 2>/dev/null || true
+
+          if git show-ref --quiet "refs/remotes/origin/$BRANCH"; then
+            git checkout "$BRANCH"
+          else
+            git checkout --orphan "$BRANCH"
+            git rm -rf . 2>/dev/null || true
+          fi
+
+          mkdir -p docs
+          cp docs-out/ANIMATIONS.md docs/ANIMATIONS.md
+          cp docs-out/CUSTOMIZATION.md docs/CUSTOMIZATION.md
+
+          git add docs/ANIMATIONS.md docs/CUSTOMIZATION.md
+          git diff --cached --quiet || git commit -m "docs: generate character docs for preset '${{ inputs.preset }}' [run #${{ github.run_number }}]"
+          git push origin "$BRANCH"
+
+      - name: Upload docs as artifact (backup)
+        uses: actions/upload-artifact@v4
+        with:
+          name: character-docs-${{ github.run_number }}
+          path: docs-out/
+          retention-days: 30
